@@ -6,14 +6,29 @@ interface Headers {
   common?: { [key: string]: string };
 }
 
+export type Method = "GET" | "PUT" | "POST" | "DELETE";
+
+export interface BasicAuth {
+  user: string;
+  pass: string;
+}
+
 export interface RequestInstance {
   baseURL: string;
   headers?: Headers;
+  getHeaders?: (
+    method: Method,
+    partialUrl: string
+  ) => { [key: string]: string };
+  auth?: BasicAuth | ((method: Method, partialUrl: string) => BasicAuth);
 }
 
 export interface RequestConfig extends RequestInit {
+  method: Method;
+  partialURL: string;
   params?: any;
   data?: any;
+  auth?: BasicAuth | ((method: Method, partialUrl: string) => BasicAuth);
 }
 
 export function createRequest(instanceConfig: RequestInstance) {
@@ -21,13 +36,11 @@ export function createRequest(instanceConfig: RequestInstance) {
     throw new Error("browser not supported");
   }
 
-  function request(partialURL: string, config: RequestConfig) {
-    const { baseURL } = instanceConfig;
-
+  function request(config: RequestConfig) {
     const url = getURL({
-      baseURL,
-      partialURL,
-      params: config?.params
+      baseURL: instanceConfig.baseURL,
+      partialURL: config.partialURL,
+      params: config.params
     });
 
     const requestData = mergeConfig(instanceConfig, config);
@@ -36,17 +49,17 @@ export function createRequest(instanceConfig: RequestInstance) {
   }
 
   return {
-    GET: (url: string, data?: RequestConfig) =>
-      request(url, { ...data, method: "GET" }),
+    GET: (partialURL: string, data?: RequestConfig) =>
+      request({ ...data, partialURL, method: "GET" }),
 
-    PUT: (url: string, data?: RequestConfig) =>
-      request(url, { ...data, method: "PUT" }),
+    PUT: (partialURL: string, data?: RequestConfig) =>
+      request({ ...data, partialURL, method: "PUT" }),
 
-    POST: (url: string, data?: RequestConfig) =>
-      request(url, { ...data, method: "POST" }),
+    POST: (partialURL: string, data?: RequestConfig) =>
+      request({ ...data, partialURL, method: "POST" }),
 
-    DELETE: (url: string, data?: RequestConfig) =>
-      request(url, { ...data, method: "DELETE" })
+    DELETE: (partialURL: string, data?: RequestConfig) =>
+      request({ ...data, partialURL, method: "DELETE" })
   };
 }
 

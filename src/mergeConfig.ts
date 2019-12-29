@@ -1,12 +1,12 @@
 import { RequestConfig, RequestInstance } from "./index";
 import {
-  isObject,
-  appendToHeader,
-  isFormData,
   isFile,
   isBlob,
+  isObject,
   isElement,
+  isFormData,
   setContentType,
+  addToHeader,
   isURLSearchParams
 } from "./utils";
 
@@ -19,18 +19,40 @@ export function mergeConfig(
     "Content-Type": "application/x-www-form-urlencoded"
   });
 
+  const { method, partialURL, params, data, auth, ...restConfig } = config;
+
+  // Merge Header
   if (isObject(defaults?.headers)) {
     const { common } = defaults.headers;
 
     if (isObject(common)) {
-      appendToHeader(headers, common);
+      addToHeader(headers, common);
     }
 
-    const methodHeader = defaults.headers[config.method.toLowerCase()];
+    const methodHeader = defaults.headers[method.toLowerCase()];
 
     if (isObject(methodHeader)) {
-      appendToHeader(headers, methodHeader);
+      addToHeader(headers, methodHeader);
     }
+  }
+
+  if (typeof defaults?.getHeaders === "function") {
+    const _headers = defaults.getHeaders(method, partialURL);
+
+    if (isObject(_headers)) {
+      addToHeader(headers, _headers);
+    }
+  }
+
+  // Set Basic Authorization Header
+  if (auth || defaults?.auth) {
+    let _auth = auth ?? defaults.auth;
+
+    _auth = typeof _auth === "function" ? _auth(method, partialURL) : _auth;
+
+    addToHeader(headers, {
+      Authorization: "Basic " + btoa(`${_auth.user}:${_auth.pass}`)
+    });
   }
 
   const body = (data => {
@@ -56,9 +78,11 @@ export function mergeConfig(
     }
 
     return data;
-  })(config.data);
+  })(data);
 
   return {
+    ...restConfig,
+    method,
     headers,
     body
   };

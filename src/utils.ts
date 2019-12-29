@@ -22,10 +22,8 @@ export function isURLSearchParams(data: any) {
   return typeof data !== "undefined" && data instanceof URLSearchParams;
 }
 
-export function appendToHeader(header: Headers, obj: any) {
-  Object.entries(obj).forEach(([key, value]) =>
-    header.append(key, String(value))
-  );
+export function addToHeader(header: Headers, obj: any) {
+  Object.entries(obj).forEach(([key, value]) => header.set(key, String(value)));
 }
 
 export function setContentType(header: Headers, value: string) {
