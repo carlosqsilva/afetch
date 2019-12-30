@@ -1,5 +1,6 @@
 import { getURL } from "./getURL";
 import { mergeConfig } from "./mergeConfig";
+import { handleResponse, timeout } from "./utils";
 
 interface Headers {
   [key: string]: any;
@@ -26,6 +27,7 @@ export interface RequestInstance {
 export interface RequestConfig extends RequestInit {
   method: Method;
   partialURL: string;
+  timeout?: number;
   params?: any;
   data?: any;
   auth?: BasicAuth | ((method: Method, partialUrl: string) => BasicAuth);
@@ -36,6 +38,8 @@ export function createRequest(instanceConfig: RequestInstance) {
     throw new Error("browser not supported");
   }
 
+  const abort = new self.AbortController();
+
   function request(config: RequestConfig) {
     const url = getURL({
       baseURL: instanceConfig.baseURL,
@@ -45,7 +49,11 @@ export function createRequest(instanceConfig: RequestInstance) {
 
     const requestData = mergeConfig(instanceConfig, config);
 
-    return self.fetch(url, requestData).then(handleResponse);
+    const promise = self.fetch(url, requestData);
+
+    return (config.timeout ? timeout(promise, config.timeout, abort) : promise)
+      .then(handleResponse)
+      .then(() => {});
   }
 
   return {
@@ -61,12 +69,4 @@ export function createRequest(instanceConfig: RequestInstance) {
     DELETE: (partialURL: string, data?: RequestConfig) =>
       request({ ...data, partialURL, method: "DELETE" })
   };
-}
-
-function handleResponse(response: Response) {
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-
-  return response;
 }

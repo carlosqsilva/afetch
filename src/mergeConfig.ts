@@ -7,7 +7,8 @@ import {
   isFormData,
   setContentType,
   addToHeader,
-  isURLSearchParams
+  isURLSearchParams,
+  isFunction
 } from "./utils";
 
 export function mergeConfig(
@@ -36,7 +37,7 @@ export function mergeConfig(
     }
   }
 
-  if (typeof defaults?.getHeaders === "function") {
+  if (isFunction(defaults?.getHeaders)) {
     const _headers = defaults.getHeaders(method, partialURL);
 
     if (isObject(_headers)) {
@@ -46,12 +47,14 @@ export function mergeConfig(
 
   // Set Basic Authorization Header
   if (auth || defaults?.auth) {
-    let _auth = auth ?? defaults.auth;
+    const _auth = auth ?? defaults.auth;
 
-    _auth = typeof _auth === "function" ? _auth(method, partialURL) : _auth;
+    const { user, pass } = isFunction(_auth)
+      ? (_auth as Function)(method, partialURL)
+      : _auth;
 
     addToHeader(headers, {
-      Authorization: "Basic " + btoa(`${_auth.user}:${_auth.pass}`)
+      Authorization: "Basic " + btoa(`${user}:${pass}`)
     });
   }
 
